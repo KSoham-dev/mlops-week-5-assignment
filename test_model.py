@@ -10,7 +10,7 @@ def data():
 
 @pytest.fixture()
 def trained_model():
-    model = joblib.load("./artifacts/model.joblib") 
+    model = joblib.load("./artifacts/model/model.pkl") 
     return model
 
 def test_data_no_null_values(data):

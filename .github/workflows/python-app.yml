@@ -1,11 +1,10 @@
 name: CML
 on:
-  push:
-    branches:
-      - dev
   pull_request:
       branches:
         - main
+  repository_dispatch:
+    types: [model-trained]
 permissions:
   contents: write
   pull-requests: write
@@ -31,30 +30,17 @@ jobs:
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
-      - name: Pull Data and Model using dvc
+      - name: Pull Data using dvc
         run: |
           dvc pull
+
+      - name: Load Model from mlflow
+        run: |
+          python3 get_model.py
 
       - name: Run Tests
         run: |
           pytest -v &> test_output.txt 
-      
-      - name: Model Evaluation
-        run: |
-          mkdir metrics
-          python3 create_metrics.py
-      
-      - name: Read CSV
-        id: csv
-        uses: juliangruber/read-file-action@v1
-        with:
-          path: ./metrics/report.csv
-
-      - name: Create MD
-        uses: petems/csv-to-md-table-action@master
-        id: table
-        with:
-          csvinput: ${{ steps.csv.outputs.content }}
 
       - name: Create cml report
         run: |
@@ -68,14 +54,7 @@ jobs:
           echo "\`\`\`" >> report.md # End the code block
 
           ## Section 2: Evaluation Metrics Table
-          echo "" >> report.md
-          echo "### Evaluation Metrics" >> report.md
-          echo "${{ steps.table.outputs.markdown-table }}" >> report.md
-
-          ## Section 3: Confusion Matrix Visualization
-          echo "" >> report.md
-          echo "### Confusion Matrix" >> report.md
-          echo "![](./metrics/confusion_matrix.png)" >> report.md
+          cat metrics.md >> report.md
 
           cml comment create report.md
         env:
